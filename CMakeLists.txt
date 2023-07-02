@@ -16,8 +16,8 @@ include_directories(emulator)
 
 
 include_directories(.)
-add_executable(u8g2_sdl main.cpp  ${SRCS_EMULATOR})
+add_executable(atomUI main.cpp  ${SRCS_EMULATOR})
 
 
-target_link_libraries(u8g2_sdl ${SDL2_LIBRARIES})
+target_link_libraries(atomUI ${SDL2_LIBRARIES})
 
