@@ -1,8 +1,10 @@
-#include "Arduino.h"
 #include "U8g2lib.h"
 #include <cstdint>
+#include <SDL_timer.h>
 #include "iostream"
 
+
+// 使用SDL模拟 12864 oled
 class U8G2_SDL_128X64 : public U8G2 {
 public:
     U8G2_SDL_128X64() : U8G2() {
@@ -10,6 +12,7 @@ public:
     }
 };
 
+// 兼容串口输出,直接输出到stdout
 class Serial {
 public:
     void println(const char *format, ...) {
@@ -29,3 +32,6 @@ public:
 
     }
 } Serial;
+
+#define delay(ms) SDL_Delay(ms);
+

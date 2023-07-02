@@ -1,4 +1,5 @@
 #ifdef __cplusplus
+#include "ArduinoCompatible.h"
 extern "C"
 {
 #endif

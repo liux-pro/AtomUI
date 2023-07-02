@@ -1,5 +1,4 @@
-#include "ArduinoCompatible.h"
-#include <cstdint>
+#include "Arduino.h"
 #include <SDL_timer.h>
 
 U8G2_SDL_128X64 u8g2;
@@ -43,5 +42,5 @@ void loop() {
         default: {
         }
     }
-    SDL_Delay(20);
+    delay(20);
 }
