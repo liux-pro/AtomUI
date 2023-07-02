@@ -1,43 +1,47 @@
-#include "Arduino.h"
-#include "U8g2lib.h"
-
-
-
-class U8G2_SDL_128X64 : public U8G2 {
-public: U8G2_SDL_128X64() : U8G2() {
-        u8g2_SetupBuffer_SDL_128x64_4(&u8g2, &u8g2_cb_r0);
-    }
-};
+#include "ArduinoCompatible.h"
+#include <cstdint>
+#include <SDL_timer.h>
 
 U8G2_SDL_128X64 u8g2;
 
-
-
 void setup() {
+    Serial.begin(9527);//没实际意义
     u8g2.begin();
+    u8g2.setFont(u8g2_font_8x13_tf);
+
+    u8g2.clearBuffer();
+    u8g2.setDrawColor(1);
+
+    u8g2.setFontPosTop();
+    u8g2.drawStr(0, 0, "Hello World!");
+
+    u8g2.sendBuffer();
 }
 
 void loop() {
     int k;
 
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_ncenB08_tr);
-    u8g2.setCursor(25, 10);
+    k = u8g_sdl_get_key();
+    switch (k) {
+        case 'w': {
+            Serial.println("w");
+        }
+            break;
+        case 's': {
+            Serial.println("s");
+        }
+            break;
+        case 'a': {
+            Serial.println("a");
+        }
+            break;
+        case 'd': {
+            Serial.println("d");
 
-    u8g2.firstPage();
-    do
-    {
-        u8g2.drawLine(0, 0, 128, 64);
-    } while( u8g2.nextPage() );
-
-
-    u8g2.sendBuffer();
-
-
-    do
-    {
-        k = u8g_sdl_get_key();
-    } while( k < 0 );
-
-
+        }
+            break;
+        default: {
+        }
+    }
+    SDL_Delay(20);
 }
