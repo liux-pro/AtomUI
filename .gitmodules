@@ -1,4 +1,0 @@
-[submodule "u8g2"]
-	path = u8g2
-	url = https://github.com/liux-pro/u8g2.git
-	branch = patch-1
