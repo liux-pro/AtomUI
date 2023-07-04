@@ -79,15 +79,6 @@ namespace AtomUI {
         int currentY = OFFSET_Y;
 
     public:
-        void nextStep() {
-            if (step > 0) {
-                step--;
-            } else {
-                current = position;
-            }
-        }
-
-
         void draw() override {
             u8g2.setDrawColor(2);
             int16_t width;
