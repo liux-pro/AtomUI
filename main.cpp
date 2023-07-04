@@ -1,47 +1,44 @@
 #include "Arduino.h"
 #include <SDL_timer.h>
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]))
+
 U8G2_SDL_128X64 u8g2;
 
 
 //主菜单内容
 const char *menu_main[] = {
-        "- 2",
-        "- Number",
-        "- 1",
-        "- 11",
-        "- 111",
-        "- 1111",
-        "- 11111",
-        "- 111111",
-        "- 1111111",
-        "- 11111111",
-        "- 111111111",
-        "- 1111111111",
-        "- 1",
-        "- 1111111111",
-        "- 1",
-        "- 1111111111",
-        "- 1",
-        "- 1111111111",
-        "- 1",
-        "- 1111111111",
-        "- 1",
-        "- 1111111111",
-        "- 1",
-        "- 1111111111",
-        "- 1",
+        "- 1 start",
+        "- 2 bbbbbbbb",
+        "- 3",
+        "- 4 aaaaaaaa",
+        "- 5",
+        "- 6",
+        "- 7 cccccccc",
+        "- 8",
+        "- 9",
+        "- 10 end",
 };
 
 
 namespace AtomUI {
     class Item {
     protected:
+        static constexpr int HEIGHT = 16;
         static constexpr int SPEED = 3;
         uint8_t position = 0;
         uint8_t current = 0;
         int8_t step = 0;
+        uint8_t slotSizeMax = 0;
+        uint8_t slotSize = 0;
+
     public:
+        Item() {
+            slotSizeMax = u8g2.getHeight() / HEIGHT;
+        }
+
         [[nodiscard]] uint8_t getPosition() const {
             return position;
         }
@@ -57,8 +54,8 @@ namespace AtomUI {
             }
         }
 
-        void down() {
-            if (position < 3) {
+        virtual void down() {
+            if (position < slotSize) {
                 position++;
                 step = SPEED;
             }
@@ -69,7 +66,6 @@ namespace AtomUI {
 
     class Cursor : public Item {
     private:
-        static constexpr int HEIGHT = 16;
         static constexpr int RADIUS = 1;
         static constexpr int OFFSET_X = 0;
         static constexpr int OFFSET_Y = 1;
@@ -79,6 +75,17 @@ namespace AtomUI {
         int currentY = OFFSET_Y;
 
     public:
+        Cursor() {
+            slotSize = MIN(ARRAY_LENGTH(menu_main), slotSizeMax);
+        };
+
+        void down() override {
+            if (position < slotSize - 1) {
+                position++;
+                step = SPEED;
+            }
+        }
+
         void draw() override {
             u8g2.setDrawColor(2);
             int16_t width;
@@ -116,11 +123,11 @@ namespace AtomUI {
                 float percent = (float) ((currentY - OFFSET_Y) % HEIGHT) / (float) HEIGHT;
                 if (step > 0) {
                     auto fromWidth = u8g2.getStrWidth(menu_main[current]);
-                    auto toWidth = u8g2.getStrWidth(menu_main[current+1]);
+                    auto toWidth = u8g2.getStrWidth(menu_main[current + 1]);
                     width = fromWidth + (int16_t) ((float) (toWidth - fromWidth) * percent);
-                } else{
+                } else {
                     percent = 1.0f - percent;
-                    auto fromWidth = u8g2.getStrWidth(menu_main[current+1]);
+                    auto fromWidth = u8g2.getStrWidth(menu_main[current + 1]);
                     auto toWidth = u8g2.getStrWidth(menu_main[current]);
                     width = fromWidth + (int16_t) ((float) (toWidth - fromWidth) * percent);
                 }
@@ -136,21 +143,34 @@ namespace AtomUI {
 
     class List : public Item {
     private:
-        static constexpr int HEIGHT = 16;
         static constexpr int OFFSET_X = 0;
         static constexpr int OFFSET_Y = 12;
 
     public:
+        List() {
+            slotSize = MIN(ARRAY_LENGTH(menu_main), slotSizeMax);
+        }
+
         void draw() override {
-            for (int i = 0; i < 4; ++i) {
+            for (int i = 0; i < slotSize; ++i) {
                 drawItem(i);
             }
         }
 
+        void down() override {
+            if (ARRAY_LENGTH(menu_main) > slotSizeMax) {
+                if (position < (ARRAY_LENGTH (menu_main) - slotSizeMax)) {
+                    Serial.println("%d", (ARRAY_LENGTH (menu_main) - slotSizeMax));
+                    position++;
+                    step = SPEED;
+                }
+            }
+        }
+
     private:
-        static void drawItem(uint8_t pos) {
+        void drawItem(uint8_t pos) {
             u8g2.setDrawColor(1);
-            u8g2.drawStr(OFFSET_X, pos * HEIGHT + OFFSET_Y, menu_main[pos]);
+            u8g2.drawStr(OFFSET_X, pos * HEIGHT + OFFSET_Y, menu_main[pos + position]);
         }
     };
 }
@@ -185,11 +205,13 @@ void loop() {
     switch (k) {
         case 'w': {
             Serial.println("w");
+//            list.up();
             cursor.up();
         }
             break;
         case 's': {
             Serial.println("s");
+//            list.down();
             cursor.down();
         }
             break;
