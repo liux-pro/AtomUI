@@ -37,11 +37,10 @@ const char *menu_main[] = {
 namespace AtomUI {
     class Item {
     protected:
+        static constexpr int SPEED = 3;
         uint8_t position = 0;
-
-        static constexpr int MAX_STEP = 4;
         uint8_t current = 0;
-        uint8_t step = 0;
+        int8_t step = 0;
     public:
         [[nodiscard]] uint8_t getPosition() const {
             return position;
@@ -54,14 +53,14 @@ namespace AtomUI {
         void up() {
             if (position > 0) {
                 position--;
-                step = MAX_STEP;
+                step = -SPEED;
             }
         }
 
         void down() {
             if (position < 3) {
                 position++;
-                step = MAX_STEP;
+                step = SPEED;
             }
         }
 
@@ -77,6 +76,8 @@ namespace AtomUI {
         static constexpr int OFFSET_WIDTH = 5;
         static constexpr int OFFSET_HEIGHT = 14;
 
+        int currentY = OFFSET_Y;
+
     public:
         void nextStep() {
             if (step > 0) {
@@ -88,28 +89,54 @@ namespace AtomUI {
 
 
         void draw() override {
-            Serial.println("%d %d",position,current);
-
             u8g2.setDrawColor(2);
-            int16_t pos;
             int16_t width;
-            auto width1 = u8g2.getStrWidth(menu_main[position]);
+            auto targetPosition = position * HEIGHT + OFFSET_Y;
 
+            // 匀速滚动
             if (step == 0) {
-                pos = 0;
-                width = (int16_t) width1;
-
+                currentY = targetPosition;
             } else {
-                auto width2 = u8g2.getStrWidth(menu_main[current]);
+                auto nextPosition = currentY + step;// 一周滚动
+                int diff = targetPosition - nextPosition;
 
-                float percent = (float) step / MAX_STEP;
-                pos = (int16_t) ((float) (current - position) * HEIGHT * percent);
-                width = width1 + (int16_t) ((float) (width2 - width1) * percent);
-
+                if (step > 0) {  //向下滚动
+                    if (diff > 0) { //滚了一小步,没到目标位置
+                        currentY = nextPosition;
+                    } else { //滚多了,超过了目标位置  也可能是恰好滚到位
+                        currentY = targetPosition;
+                        step = 0;  // 停止滚动
+                    }
+                } else if (step < 0) {
+                    if (diff < 0) {
+                        currentY = nextPosition;
+                    } else {
+                        currentY = targetPosition;
+                        step = 0;  // 停止滚动
+                    }
+                }
+                current = (currentY - OFFSET_Y) / HEIGHT;
             }
-            nextStep();
 
-            u8g2.drawRBox(OFFSET_X, position * HEIGHT + pos + OFFSET_Y,
+            // 计算宽度,宽度为前进方向最近的那个文字的宽度
+            if (step == 0) {
+                width = u8g2.getStrWidth(menu_main[position]);
+            } else {
+                float percent = (float) ((currentY - OFFSET_Y) % HEIGHT) / (float) HEIGHT;
+                if (step > 0) {
+                    auto fromWidth = u8g2.getStrWidth(menu_main[current]);
+                    auto toWidth = u8g2.getStrWidth(menu_main[current+1]);
+                    width = fromWidth + (int16_t) ((float) (toWidth - fromWidth) * percent);
+                } else{
+                    percent = 1.0f - percent;
+                    auto fromWidth = u8g2.getStrWidth(menu_main[current+1]);
+                    auto toWidth = u8g2.getStrWidth(menu_main[current]);
+                    width = fromWidth + (int16_t) ((float) (toWidth - fromWidth) * percent);
+                }
+            }
+
+
+            u8g2.drawRBox(OFFSET_X, currentY,
                           width + OFFSET_WIDTH,
                           OFFSET_HEIGHT,
                           RADIUS);
@@ -144,8 +171,8 @@ void setup() {
     u8g2.setFont(u8g2_font_wqy12_t_chinese1);
     u8g2.setFontPosBaseline();
 
-    Serial.println("h %d", u8g2.getBufferTileHeight());
-    Serial.println("w %d", u8g2.getBufferTileWidth());
+    Serial.println("h %d", u8g2.getDisplayHeight());
+    Serial.println("w %d", u8g2.getDisplayWidth());
 }
 
 AtomUI::Cursor cursor;
@@ -187,5 +214,5 @@ void loop() {
         default: {
         }
     }
-    delay(16);
+    delay(17);
 }
