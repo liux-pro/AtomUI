@@ -30,13 +30,13 @@ namespace AtomUI {
         static constexpr int SPEED = 3;
         uint8_t position = 0;
         uint8_t current = 0;
-        int8_t step = 0;
-        uint8_t slotSizeMax = 0;
+        int8_t speed = 0;
+        uint8_t slotSizeScreen = 0;  //屏幕最多显示多少个
         uint8_t slotSize = 0;
 
     public:
         Item() {
-            slotSizeMax = u8g2.getHeight() / HEIGHT;
+            slotSizeScreen = u8g2.getHeight() / HEIGHT;
         }
 
         [[nodiscard]] uint8_t getPosition() const {
@@ -47,22 +47,84 @@ namespace AtomUI {
             position = pos;
         }
 
-        void up() {
+        virtual void up() {
             if (position > 0) {
                 position--;
-                step = -SPEED;
+                speed = -SPEED;
             }
         }
 
         virtual void down() {
             if (position < slotSize) {
                 position++;
-                step = SPEED;
+                speed = SPEED;
             }
         }
 
         virtual void draw() = 0;
     };
+
+
+    class List : public Item {
+    private:
+        static constexpr int OFFSET_X = 0;
+        static constexpr int OFFSET_Y = 12;
+        int offsetY = 0;
+        bool allowScroll = false;
+
+    public:
+        List() {
+            if (getListSize() > slotSizeScreen) {
+                slotSize = slotSizeScreen + 1;
+                allowScroll = true;
+            } else {
+                slotSize = getListSize();
+            }
+        }
+
+        uint8_t getListSize() {
+            return (ARRAY_LENGTH (menu_main));
+        }
+
+        void draw() override {
+            if (allowScroll) {
+                auto targetOffsetY = position * HEIGHT;
+                // 匀速滚动
+                if (speed == 0) {
+                    offsetY = targetOffsetY;
+                } else {
+                    offsetY = offsetY + speed;
+                    if (speed > 0) {  //向下滚动
+                        if (offsetY >= targetOffsetY) {//滚多了,超过了目标位置  也可能是恰好滚到位
+                            offsetY = targetOffsetY;
+                            speed = 0;  // 停止滚动
+                        }
+                    } else if (speed < 0) {
+                        if (offsetY <= targetOffsetY) {//滚多了,超过了目标位置  也可能是恰好滚到位
+                            offsetY = targetOffsetY;
+                            speed = 0;  // 停止滚动
+                        }
+                    }
+                }
+
+            }
+
+            for (int i = 0; i < getListSize(); ++i) {
+                u8g2.setDrawColor(1);
+                u8g2.drawStr(OFFSET_X, i * HEIGHT + OFFSET_Y - offsetY, menu_main[i]);
+            }
+        }
+
+        void down() override {
+            if (allowScroll) {
+                if (position < getListSize() - slotSizeScreen) {
+                    position++;
+                    speed = SPEED;
+                }
+            }
+        }
+    };
+
 
     class Cursor : public Item {
     private:
@@ -72,17 +134,30 @@ namespace AtomUI {
         static constexpr int OFFSET_WIDTH = 5;
         static constexpr int OFFSET_HEIGHT = 14;
 
+        Item *item;
         int currentY = OFFSET_Y;
 
     public:
-        Cursor() {
-            slotSize = MIN(ARRAY_LENGTH(menu_main), slotSizeMax);
+        Cursor(Item *item) {
+            this->item = item;
+            slotSize = MIN(ARRAY_LENGTH(menu_main), slotSizeScreen);
         };
+
+        void up() override {
+            if (position > 0) {
+                position--;
+                speed = -SPEED;
+            } else {
+                item->up();
+            }
+        }
 
         void down() override {
             if (position < slotSize - 1) {
                 position++;
-                step = SPEED;
+                speed = SPEED;
+            } else {
+                item->down();
             }
         }
 
@@ -92,85 +167,53 @@ namespace AtomUI {
             auto targetPosition = position * HEIGHT + OFFSET_Y;
 
             // 匀速滚动
-            if (step == 0) {
+            if (speed == 0) {
                 currentY = targetPosition;
             } else {
-                auto nextPosition = currentY + step;// 一周滚动
+                auto nextPosition = currentY + speed;// 一周滚动
                 int diff = targetPosition - nextPosition;
 
-                if (step > 0) {  //向下滚动
+                if (speed > 0) {  //向下滚动
                     if (diff > 0) { //滚了一小步,没到目标位置
                         currentY = nextPosition;
                     } else { //滚多了,超过了目标位置  也可能是恰好滚到位
                         currentY = targetPosition;
-                        step = 0;  // 停止滚动
+                        speed = 0;  // 停止滚动
                     }
-                } else if (step < 0) {
+                } else if (speed < 0) {
                     if (diff < 0) {
                         currentY = nextPosition;
                     } else {
                         currentY = targetPosition;
-                        step = 0;  // 停止滚动
+                        speed = 0;  // 停止滚动
                     }
                 }
                 current = (currentY - OFFSET_Y) / HEIGHT;
             }
 
-            // 计算宽度,宽度为前进方向最近的那个文字的宽度
-            if (step == 0) {
-                width = u8g2.getStrWidth(menu_main[position]);
-            } else {
-                float percent = (float) ((currentY - OFFSET_Y) % HEIGHT) / (float) HEIGHT;
-                if (step > 0) {
-                    auto fromWidth = u8g2.getStrWidth(menu_main[current]);
-                    auto toWidth = u8g2.getStrWidth(menu_main[current + 1]);
-                    width = fromWidth + (int16_t) ((float) (toWidth - fromWidth) * percent);
-                } else {
-                    percent = 1.0f - percent;
-                    auto fromWidth = u8g2.getStrWidth(menu_main[current + 1]);
-                    auto toWidth = u8g2.getStrWidth(menu_main[current]);
-                    width = fromWidth + (int16_t) ((float) (toWidth - fromWidth) * percent);
-                }
-            }
+//            // 计算宽度,宽度为前进方向最近的那个文字的宽度
+//            if (step == 0) {
+//                width = u8g2.getStrWidth(menu_main[position]);
+//            } else {
+//                float percent = (float) ((currentY - OFFSET_Y) % HEIGHT) / (float) HEIGHT;
+//                if (step > 0) {
+//                    auto fromWidth = u8g2.getStrWidth(menu_main[current]);
+//                    auto toWidth = u8g2.getStrWidth(menu_main[current + 1]);
+//                    width = fromWidth + (int16_t) ((float) (toWidth - fromWidth) * percent);
+//                } else {
+//                    percent = 1.0f - percent;
+//                    auto fromWidth = u8g2.getStrWidth(menu_main[current + 1]);
+//                    auto toWidth = u8g2.getStrWidth(menu_main[current]);
+//                    width = fromWidth + (int16_t) ((float) (toWidth - fromWidth) * percent);
+//                }
+//            }
 
 
             u8g2.drawRBox(OFFSET_X, currentY,
-                          width + OFFSET_WIDTH,
+//                          width + OFFSET_WIDTH,
+                          60,
                           OFFSET_HEIGHT,
                           RADIUS);
-        }
-    };
-
-    class List : public Item {
-    private:
-        static constexpr int OFFSET_X = 0;
-        static constexpr int OFFSET_Y = 12;
-
-    public:
-        List() {
-            slotSize = MIN(ARRAY_LENGTH(menu_main), slotSizeMax);
-        }
-
-        void draw() override {
-            for (int i = 0; i < slotSize; ++i) {
-                drawItem(i);
-            }
-        }
-
-        void down() override {
-            if (ARRAY_LENGTH(menu_main) > slotSizeMax) {
-                if (position < (ARRAY_LENGTH (menu_main) - slotSizeMax)) {
-                    Serial.println("%d", (ARRAY_LENGTH (menu_main) - slotSizeMax));
-                    position++;
-                    step = SPEED;
-                }
-            }
-        }
-
-    private:
-        void drawItem(uint8_t pos) {
-            u8g2.setDrawColor(1);
-            u8g2.drawStr(OFFSET_X, pos * HEIGHT + OFFSET_Y, menu_main[pos + position]);
         }
     };
 }
@@ -186,8 +229,8 @@ void setup() {
     Serial.println("w %d", u8g2.getDisplayWidth());
 }
 
-AtomUI::Cursor cursor;
 AtomUI::List list;
+AtomUI::Cursor cursor(&list);
 
 void loop() {
 
