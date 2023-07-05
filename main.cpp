@@ -6,25 +6,29 @@
 
 #ifdef ARDUINO
 // work on esp32
-
-#include "SPI.h"
 #include <U8g2lib.h>
 
-#define SPI_CLK 2
-#define SPI_DATA 3
-#define SPI_CS 7
-#define SPI_DC 6
-#define SPI_RST 10
+//use i2c
+#define I2C_CLK 22
+#define I2C_DATA 23
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ I2C_CLK, /* data=*/ I2C_DATA);
 
-class U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI_ESP32 : public U8G2 {
-public:
-  U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI_ESP32(const u8g2_cb_t *rotation, uint8_t clock, uint8_t data, uint8_t cs, uint8_t dc, uint8_t reset = U8X8_PIN_NONE)
-    : U8G2() {
-    u8g2_Setup_ssd1306_128x64_noname_f(&u8g2, rotation, u8x8_byte_arduino_hw_spi, u8x8_gpio_and_delay_arduino);
-    u8x8_SetPin_4Wire_SW_SPI(getU8x8(), clock, data, cs, dc, reset);
-  }
-};
-U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI_ESP32 u8g2(U8G2_R0, SPI_CLK, SPI_DATA, SPI_CS, SPI_DC, SPI_RST);
+// use SPI
+// #define SPI_CLK 2
+// #define SPI_DATA 3
+// #define SPI_CS 7
+// #define SPI_DC 6
+// #define SPI_RST 10
+
+// class U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI_ESP32 : public U8G2 {
+// public:
+//   U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI_ESP32(const u8g2_cb_t *rotation, uint8_t clock, uint8_t data, uint8_t cs, uint8_t dc, uint8_t reset = U8X8_PIN_NONE)
+//     : U8G2() {
+//     u8g2_Setup_ssd1306_128x64_noname_f(&u8g2, rotation, u8x8_byte_arduino_hw_spi, u8x8_gpio_and_delay_arduino);
+//     u8x8_SetPin_4Wire_SW_SPI(getU8x8(), clock, data, cs, dc, reset);
+//   }
+// };
+// U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI_ESP32 u8g2(U8G2_R0, SPI_CLK, SPI_DATA, SPI_CS, SPI_DC, SPI_RST);
 #else
 U8G2_SDL_128X64 u8g2;
 #endif
