@@ -33,5 +33,5 @@ public:
     }
 } Serial;
 
-#define delay(ms) SDL_Delay(ms);
+#define delay(ms) SDL_Delay(ms)
 
